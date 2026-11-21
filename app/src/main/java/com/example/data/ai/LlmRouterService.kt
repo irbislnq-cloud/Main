@@ -50,6 +50,9 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 private const val TAG = "LlmRouterService"
+private const val CLOUD_TOTAL_TIMEOUT_MS = 90_000L
+private const val LOCAL_TOTAL_TIMEOUT_MS = 600_000L
+private const val HTTP_READ_TIMEOUT_SECONDS = 600L
 
 class LlmQuotaOrRateLimitException(
     message: String,
@@ -102,7 +105,7 @@ class LlmRouterService {
     private val httpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
             .connectTimeout(25, TimeUnit.SECONDS)
-            .readTimeout(90, TimeUnit.SECONDS)
+            .readTimeout(HTTP_READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .build()
     }
@@ -549,13 +552,19 @@ class LlmRouterService {
             reqBuilder.header("X-Title", "LoreCraft RP Studio")
         }
 
+        val requestTimeoutMs = if (provider == LlmProvider.LOCAL_LLM) {
+            LOCAL_TOTAL_TIMEOUT_MS
+        } else {
+            CLOUD_TOTAL_TIMEOUT_MS
+        }
+
         suspend fun executeRequest(emitChunk: suspend (String) -> Unit) {
             val accumulated = StringBuilder()
             val reasoningOnly = StringBuilder()
             var thinkOpened = false
             var thinkClosed = false
 
-            withTimeout(90_000L) {
+            withTimeout(requestTimeoutMs) {
                 httpClient.newCall(reqBuilder.build()).execute().use { response ->
                     val body = response.body
                     if (!response.isSuccessful || body == null) {
@@ -654,7 +663,7 @@ class LlmRouterService {
             }
         } catch (e: TimeoutCancellationException) {
             AppLogBuffer.e(TAG, "OpenAI-compatible timed out", e)
-            throw IllegalStateException("Таймаут запроса к ${provider.displayName} (90 сек).")
+            throw IllegalStateException("Таймаут запроса к ${provider.displayName} (${requestTimeoutMs / 1000} сек).")
         } catch (e: CancellationException) {
             throw e
         } catch (e: ConnectException) {
