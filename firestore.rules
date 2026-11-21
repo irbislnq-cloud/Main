@@ -1,0 +1,270 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isNum(val) {
+      return val is int || val is float;
+    }
+
+    function isValidStringList(listVal, maxItems, maxItemLen) {
+      return listVal is list && listVal.size() <= maxItems;
+    }
+
+    function isValidLoreEntryList(listVal) {
+      return listVal is list && listVal.size() <= 40;
+    }
+
+    function isValidRpgState(m) {
+      return m is map &&
+             m.keys().hasAll(['enabled', 'level', 'hp', 'maxHp', 'mp', 'maxMp', 'gold', 'stats', 'inventory', 'statuses', 'activeQuest']) &&
+             m.keys().hasOnly([
+               'enabled', 'level', 'hp', 'maxHp', 'mp', 'maxMp', 'gold', 'stats', 'inventory',
+               'statuses', 'activeQuest', 'currentLocationId', 'locations', 'combat',
+               'playerProfile', 'worldEnv', 'npcs', 'quests', 'chronicle'
+             ]) &&
+             m.enabled is bool &&
+             m.level is int && m.level >= 1 && m.level <= 999 &&
+             m.hp is int && m.hp >= 0 && m.hp <= 99999 &&
+             m.maxHp is int && m.maxHp >= 1 && m.maxHp <= 99999 &&
+             m.mp is int && m.mp >= 0 &&
+             m.gold is int && m.gold >= 0 &&
+             m.stats is map &&
+             m.inventory is list && m.inventory.size() <= 40 &&
+             m.statuses is list && m.statuses.size() <= 20 &&
+             m.activeQuest is string && m.activeQuest.size() <= 500;
+    }
+
+    function isValidRpMode(mode) {
+      return mode in ['CHARACTER_1ON1', 'GAME_MASTER', 'GROUP_SCENE', 'NARRATIVE'];
+    }
+
+    function isValidProvider(provider) {
+      return provider in ['POLLINATIONS', 'GEMINI_AI_LOGIC', 'GEMINI_DIRECT', 'OPENAI', 'ANTHROPIC', 'OPENROUTER', 'GROQ', 'LOCAL_LLM', 'DEEPSEEK', 'CUSTOM'];
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    function isValidScenario(data, userId) {
+      return data.userId == userId &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+             isValidRpMode(data.rpMode) &&
+             data.systemPrompt is string && data.systemPrompt.size() >= 1 && data.systemPrompt.size() <= 20000 &&
+             (!('defaultRpgState' in data) || isValidRpgState(data.defaultRpgState)) &&
+             (!('defaultAgentSetupJson' in data) || (data.defaultAgentSetupJson is string && data.defaultAgentSetupJson.size() <= 16000)) &&
+             isValidProvider(data.defaultProvider) &&
+             data.defaultModelId is string && data.defaultModelId.size() >= 1 && data.defaultModelId.size() <= 120 &&
+             isNum(data.temperature) && data.temperature >= 0.0 && data.temperature <= 2.0 &&
+             isNum(data.topP) && data.topP > 0.0 && data.topP <= 1.0 &&
+             data.topK is int && data.topK >= 1 && data.topK <= 200 &&
+             data.maxTokens is int && data.maxTokens >= 64 && data.maxTokens <= 16384 &&
+             data.contextWindowMessages is int && data.contextWindowMessages >= 2 && data.contextWindowMessages <= 200 &&
+             isNum(data.presencePenalty) && isNum(data.frequencyPenalty) &&
+             data.pinned is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidChat(data, userId) {
+      return data.userId == userId &&
+             data.scenarioId is string && data.scenarioId.size() >= 1 && data.scenarioId.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 140 &&
+             isValidRpMode(data.rpMode) &&
+             data.systemPrompt is string && data.systemPrompt.size() >= 1 && data.systemPrompt.size() <= 20000 &&
+             data.characterName is string && data.characterName.size() >= 1 && data.characterName.size() <= 100 &&
+             data.userPersonaName is string && data.userPersonaName.size() >= 1 && data.userPersonaName.size() <= 100 &&
+             (!('rpgState' in data) || isValidRpgState(data.rpgState)) &&
+             (!('agentSetupJson' in data) || (data.agentSetupJson is string && data.agentSetupJson.size() <= 16000)) &&
+             isValidProvider(data.provider) &&
+             data.modelId is string && data.modelId.size() >= 1 && data.modelId.size() <= 120 &&
+             isNum(data.temperature) && data.temperature >= 0.0 && data.temperature <= 2.0 &&
+             isNum(data.topP) && data.topP > 0.0 && data.topP <= 1.0 &&
+             data.topK is int && data.topK >= 1 && data.topK <= 200 &&
+             data.maxTokens is int && data.maxTokens >= 64 && data.maxTokens <= 16384 &&
+             data.contextWindowMessages is int && data.contextWindowMessages >= 2 && data.contextWindowMessages <= 200 &&
+             isNum(data.presencePenalty) && isNum(data.frequencyPenalty) &&
+             data.messageCount is int && data.messageCount >= 0 &&
+             data.pinned is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidMessage(data, userId, chatId) {
+      return data.userId == userId &&
+             data.chatId == chatId &&
+             data.role in ['user', 'assistant', 'system'] &&
+             (!('speakerName' in data) || (data.speakerName is string && data.speakerName.size() <= 100)) &&
+             data.content is string && data.content.size() >= 1 && data.content.size() <= 32000 &&
+             (!('variants' in data) || isValidStringList(data.variants, 12, 32000)) &&
+             (!('variantModels' in data) || isValidStringList(data.variantModels, 12, 120)) &&
+             (!('activeVariantIndex' in data) || (data.activeVariantIndex is int && data.activeVariantIndex >= 0 && data.activeVariantIndex < 12)) &&
+             data.messageKind in ['ROLEPLAY', 'OOC', 'DICE', 'NARRATOR'] &&
+             (!('modelUsed' in data) || (data.modelUsed is string && data.modelUsed.size() <= 120)) &&
+             (!('sceneArtUri' in data) || (data.sceneArtUri is string && data.sceneArtUri.size() <= 500)) &&
+             (!('agentTrace' in data) || isValidStringList(data.agentTrace, 16, 160)) &&
+             data.orderIndex is int && data.orderIndex >= 0 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidPersona(data, userId) {
+      return data.userId == userId &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 4000)) &&
+             (!('preferredStyle' in data) || (data.preferredStyle is string && data.preferredStyle.size() <= 500)) &&
+             data.activeDefault is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    match /users/{userId}/scenarios/{scenarioId} {
+      allow list: if isOwner(userId);
+      allow get: if isOwner(userId) && isValidId(scenarioId);
+      allow create: if isOwner(userId) &&
+                       isValidId(scenarioId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'title', 'rpMode', 'systemPrompt', 'defaultProvider', 'defaultModelId',
+                         'temperature', 'topP', 'topK', 'maxTokens', 'contextWindowMessages',
+                         'presencePenalty', 'frequencyPenalty', 'pinned', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'title', 'subtitle', 'rpMode', 'systemPrompt', 'characterBio',
+                         'firstMessage', 'exampleDialogue', 'loreNotes', 'loreEntries', 'defaultRpgState',
+                         'defaultAgentSetupJson', 'participants', 'tags', 'defaultProvider', 'defaultModelId',
+                         'temperature', 'topP', 'topK', 'maxTokens', 'contextWindowMessages',
+                         'presencePenalty', 'frequencyPenalty', 'stopSequences', 'avatarIconKey',
+                         'accentColorHex', 'portraitUri', 'backdropUri', 'pinned', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidScenario(incoming(), userId);
+      allow update: if isOwner(userId) &&
+                       isValidId(scenarioId) &&
+                       isValidScenario(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'title', 'subtitle', 'rpMode', 'systemPrompt', 'characterBio',
+                         'firstMessage', 'exampleDialogue', 'loreNotes', 'loreEntries', 'defaultRpgState',
+                         'defaultAgentSetupJson', 'participants', 'tags', 'defaultProvider', 'defaultModelId',
+                         'temperature', 'topP', 'topK', 'maxTokens', 'contextWindowMessages',
+                         'presencePenalty', 'frequencyPenalty', 'stopSequences', 'avatarIconKey',
+                         'accentColorHex', 'portraitUri', 'backdropUri', 'pinned', 'updatedAt'
+                       ]);
+      allow delete: if isOwner(userId) && isValidId(scenarioId);
+    }
+
+    match /users/{userId}/chats/{chatId} {
+      allow list: if isOwner(userId);
+      allow get: if isOwner(userId) && isValidId(chatId);
+      allow create: if isOwner(userId) &&
+                       isValidId(chatId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'scenarioId', 'title', 'rpMode', 'systemPrompt', 'characterName',
+                         'userPersonaName', 'provider', 'modelId', 'temperature', 'topP', 'topK',
+                         'maxTokens', 'contextWindowMessages', 'presencePenalty', 'frequencyPenalty',
+                         'messageCount', 'pinned', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'scenarioId', 'rootChatId', 'parentChatId', 'branchLabel', 'branchPointOrder',
+                         'title', 'rpMode', 'systemPrompt', 'characterName', 'userPersonaName',
+                         'userPersonaDesc', 'authorsNote', 'memorySummary', 'loreNotes', 'loreEntries', 'rpgState',
+                         'agentSetupJson', 'participants', 'provider', 'modelId', 'temperature', 'topP', 'topK', 'maxTokens',
+                         'contextWindowMessages', 'presencePenalty', 'frequencyPenalty', 'stopSequences',
+                         'portraitUri', 'backdropUri', 'lastMessagePreview', 'messageCount', 'pinned', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidChat(incoming(), userId);
+      allow update: if isOwner(userId) &&
+                       isValidId(chatId) &&
+                       isValidChat(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'rootChatId', 'parentChatId', 'branchLabel', 'branchPointOrder',
+                         'title', 'rpMode', 'systemPrompt', 'characterName', 'userPersonaName',
+                         'userPersonaDesc', 'authorsNote', 'memorySummary', 'loreNotes', 'loreEntries', 'rpgState',
+                         'agentSetupJson', 'participants', 'provider', 'modelId', 'temperature', 'topP', 'topK',
+                         'maxTokens', 'contextWindowMessages', 'presencePenalty', 'frequencyPenalty',
+                         'stopSequences', 'portraitUri', 'backdropUri', 'lastMessagePreview', 'messageCount', 'pinned', 'updatedAt'
+                       ]);
+      allow delete: if isOwner(userId) && isValidId(chatId);
+
+      match /messages/{messageId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId) && isValidId(chatId) && isValidId(messageId);
+        allow create: if isOwner(userId) &&
+                         isValidId(chatId) &&
+                         isValidId(messageId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'chatId', 'role', 'content', 'messageKind',
+                           'orderIndex', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'chatId', 'role', 'speakerName', 'content',
+                           'variants', 'variantModels', 'activeVariantIndex',
+                           'messageKind', 'modelUsed', 'sceneArtUri', 'agentTrace',
+                           'orderIndex', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidMessage(incoming(), userId, chatId) &&
+                         existsAfter(/databases/$(database)/documents/users/$(userId)/chats/$(chatId));
+        allow update: if isOwner(userId) &&
+                         isValidId(chatId) &&
+                         isValidId(messageId) &&
+                         isValidMessage(incoming(), userId, chatId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().chatId == existing().chatId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'role', 'speakerName', 'content',
+                           'variants', 'variantModels', 'activeVariantIndex',
+                           'messageKind', 'modelUsed', 'sceneArtUri', 'agentTrace',
+                           'orderIndex', 'updatedAt'
+                         ]);
+        allow delete: if isOwner(userId) && isValidId(chatId) && isValidId(messageId);
+      }
+    }
+
+    match /users/{userId}/personas/{personaId} {
+      allow list: if isOwner(userId);
+      allow get: if isOwner(userId) && isValidId(personaId);
+      allow create: if isOwner(userId) &&
+                       isValidId(personaId) &&
+                       incoming().keys().hasAll(['userId', 'name', 'activeDefault', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'name', 'description', 'preferredStyle', 'activeDefault', 'createdAt', 'updatedAt']) &&
+                       isValidPersona(incoming(), userId);
+      allow update: if isOwner(userId) &&
+                       isValidId(personaId) &&
+                       isValidPersona(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'name', 'description', 'preferredStyle', 'activeDefault', 'updatedAt'
+                       ]);
+      allow delete: if isOwner(userId) && isValidId(personaId);
+    }
+  }
+}

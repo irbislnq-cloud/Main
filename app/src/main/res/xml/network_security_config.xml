@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Permits HTTP to loopback (127.0.0.1, localhost) and user LAN LLM servers
+         (e.g. Ollama / llama.cpp at 192.168.x.x); LlmRouterService rejects plain HTTP
+         to non-private internet hosts. -->
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

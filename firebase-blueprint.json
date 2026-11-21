@@ -1,0 +1,168 @@
+{
+  "entities": {
+    "RpScenario": {
+      "title": "RpScenario",
+      "description": "Custom roleplay character, world, or game master template with system prompt, smart lorebook, RPG defaults, and generation parameters.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase Auth UID." },
+        "title": { "type": "string", "description": "Display title of the character or world." },
+        "subtitle": { "type": "string", "description": "Short tagline or genre summary." },
+        "rpMode": {
+          "type": "string",
+          "enum": ["CHARACTER_1ON1", "GAME_MASTER", "GROUP_SCENE", "NARRATIVE"],
+          "description": "Roleplay format mode."
+        },
+        "systemPrompt": { "type": "string", "description": "Custom system prompt instructing the LLM." },
+        "characterBio": { "type": "string", "description": "Character traits, world rules, or setting details." },
+        "firstMessage": { "type": "string", "description": "Initial RP greeting or opening scene." },
+        "exampleDialogue": { "type": "string", "description": "Few-shot style dialogue examples." },
+        "loreNotes": { "type": "array", "description": "Pinned lorebook facts (max 30 strings)." },
+        "loreEntries": { "type": "array", "description": "Structured keyword-triggered lorebook entries (max 40)." },
+        "defaultRpgState": { "type": "object", "description": "Optional default RPG HUD state for this world." },
+        "defaultAgentSetupJson": { "type": "string", "description": "JSON configuration for the multi-agent pipeline and custom agents." },
+        "participants": { "type": "array", "description": "Scene character names for group RP (max 12 strings)." },
+        "tags": { "type": "array", "description": "Genre or mood tags (max 10 strings)." },
+        "defaultProvider": {
+          "type": "string",
+          "enum": ["POLLINATIONS", "GEMINI_AI_LOGIC", "GEMINI_DIRECT", "OPENAI", "ANTHROPIC", "OPENROUTER", "GROQ", "LOCAL_LLM", "DEEPSEEK", "CUSTOM"],
+          "description": "Preferred LLM provider."
+        },
+        "defaultModelId": { "type": "string", "description": "Model identifier for the selected provider." },
+        "temperature": { "type": "number", "description": "Sampling temperature (0.0 to 2.0)." },
+        "topP": { "type": "number", "description": "Nucleus sampling top-p (0.01 to 1.0)." },
+        "topK": { "type": "integer", "description": "Top-k sampling limit (1 to 200)." },
+        "maxTokens": { "type": "integer", "description": "Maximum output tokens (64 to 16384)." },
+        "contextWindowMessages": { "type": "integer", "description": "Recent messages included in context (2 to 200)." },
+        "presencePenalty": { "type": "number", "description": "Presence penalty (-2.0 to 2.0)." },
+        "frequencyPenalty": { "type": "number", "description": "Frequency penalty (-2.0 to 2.0)." },
+        "stopSequences": { "type": "array", "description": "Custom stop sequences (max 10 strings)." },
+        "avatarIconKey": { "type": "string", "description": "Visual avatar emblem key." },
+        "accentColorHex": { "type": "string", "description": "Accent color hex string." },
+        "portraitUri": { "type": "string", "description": "App-local character portrait image URI." },
+        "backdropUri": { "type": "string", "description": "App-local scene backdrop image URI." },
+        "pinned": { "type": "boolean", "description": "Whether scenario is pinned to top." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on creation." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on last update." }
+      },
+      "required": [
+        "userId", "title", "rpMode", "systemPrompt", "defaultProvider", "defaultModelId",
+        "temperature", "topP", "topK", "maxTokens", "contextWindowMessages",
+        "presencePenalty", "frequencyPenalty", "pinned", "createdAt", "updatedAt"
+      ]
+    },
+    "RpChat": {
+      "title": "RpChat",
+      "description": "Cloud-synced roleplay dialogue session with branch tree links, smart lorebook, RPG HUD state, and tuning parameters.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase Auth UID." },
+        "scenarioId": { "type": "string", "description": "Source scenario ID or 'custom'." },
+        "rootChatId": { "type": "string", "description": "Root session ID for visual branch tree grouping." },
+        "parentChatId": { "type": "string", "description": "Direct parent branch chat ID, if branched." },
+        "branchLabel": { "type": "string", "description": "Short label for this story branch." },
+        "branchPointOrder": { "type": "integer", "description": "Message orderIndex where this branch forked." },
+        "title": { "type": "string", "description": "Chat session title." },
+        "rpMode": {
+          "type": "string",
+          "enum": ["CHARACTER_1ON1", "GAME_MASTER", "GROUP_SCENE", "NARRATIVE"]
+        },
+        "systemPrompt": { "type": "string", "description": "Active system prompt for this session." },
+        "characterName": { "type": "string", "description": "Primary AI character or GM name." },
+        "userPersonaName": { "type": "string", "description": "User's in-character persona name." },
+        "userPersonaDesc": { "type": "string", "description": "User's in-character persona description." },
+        "authorsNote": { "type": "string", "description": "Persistent OOC director note injected near end of context." },
+        "memorySummary": { "type": "string", "description": "Compressed narrative memory summary." },
+        "loreNotes": { "type": "array", "description": "Active lorebook facts for this chat (max 30 strings)." },
+        "loreEntries": { "type": "array", "description": "Structured keyword-triggered lorebook entries (max 40)." },
+        "rpgState": { "type": "object", "description": "Interactive RPG sheet state (HP, MP, stats, inventory, NPCs, quests, chronicle, world env)." },
+        "agentSetupJson": { "type": "string", "description": "JSON configuration for active roleplay/RPG/markup/custom agents." },
+        "participants": { "type": "array", "description": "Active scene participants (max 12 strings)." },
+        "provider": {
+          "type": "string",
+          "enum": ["POLLINATIONS", "GEMINI_AI_LOGIC", "GEMINI_DIRECT", "OPENAI", "ANTHROPIC", "OPENROUTER", "GROQ", "LOCAL_LLM", "DEEPSEEK", "CUSTOM"]
+        },
+        "modelId": { "type": "string" },
+        "temperature": { "type": "number" },
+        "topP": { "type": "number" },
+        "topK": { "type": "integer" },
+        "maxTokens": { "type": "integer" },
+        "contextWindowMessages": { "type": "integer" },
+        "presencePenalty": { "type": "number" },
+        "frequencyPenalty": { "type": "number" },
+        "stopSequences": { "type": "array" },
+        "portraitUri": { "type": "string" },
+        "backdropUri": { "type": "string" },
+        "lastMessagePreview": { "type": "string" },
+        "messageCount": { "type": "integer" },
+        "pinned": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId", "scenarioId", "title", "rpMode", "systemPrompt", "characterName",
+        "userPersonaName", "provider", "modelId", "temperature", "topP", "topK",
+        "maxTokens", "contextWindowMessages", "presencePenalty", "frequencyPenalty",
+        "messageCount", "pinned", "createdAt", "updatedAt"
+      ]
+    },
+    "RpMessage": {
+      "title": "RpMessage",
+      "description": "Individual message turn inside a roleplay chat session with multi-variant swipe support.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "chatId": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "assistant", "system"] },
+        "speakerName": { "type": "string" },
+        "content": { "type": "string" },
+        "variants": { "type": "array", "description": "Alternative swipe variants for this turn (max 12)." },
+        "variantModels": { "type": "array", "description": "Model name used for each swipe variant (max 12)." },
+        "activeVariantIndex": { "type": "integer", "description": "Currently selected swipe variant index." },
+        "messageKind": { "type": "string", "enum": ["ROLEPLAY", "OOC", "DICE", "NARRATOR"] },
+        "modelUsed": { "type": "string" },
+        "sceneArtUri": { "type": "string", "description": "Optional local URI for inline scene illustration." },
+        "agentTrace": { "type": "array", "description": "Brief summary of agent contributions for this message (max 16)." },
+        "orderIndex": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId", "chatId", "role", "content", "messageKind", "orderIndex", "createdAt", "updatedAt"
+      ]
+    },
+    "UserPersona": {
+      "title": "UserPersona",
+      "description": "Reusable user roleplay persona profile.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "preferredStyle": { "type": "string" },
+        "activeDefault": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "activeDefault", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/scenarios/{scenarioId}": {
+      "schema": { "$ref": "#/entities/RpScenario" },
+      "description": "User-owned roleplay scenarios and character cards."
+    },
+    "/users/{userId}/chats/{chatId}": {
+      "schema": { "$ref": "#/entities/RpChat" },
+      "description": "User-owned cloud-synced roleplay chat sessions."
+    },
+    "/users/{userId}/chats/{chatId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/RpMessage" },
+      "description": "Ordered roleplay turns belonging to a specific chat session."
+    },
+    "/users/{userId}/personas/{personaId}": {
+      "schema": { "$ref": "#/entities/UserPersona" },
+      "description": "User's reusable in-character roleplay personas."
+    }
+  }
+}

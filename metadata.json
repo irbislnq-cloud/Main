@@ -1,0 +1,6 @@
+{
+  "name": "LoreCraft",
+  "description": "AI roleplay studio with custom system prompts, multi-LLM support, generation tuning, cloud chat sync, and JSON export.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
